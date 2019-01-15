@@ -1,0 +1,6 @@
+srctype = micropython-wolk-connect
+type = package
+version = 0.1.0
+author = WolkAbout
+desc = Connectivity package for WolkAbout IoT Platform.
+long_desc = README.md
