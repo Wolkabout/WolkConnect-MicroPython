@@ -205,9 +205,6 @@ def _deserialize_configuration_command(message):
 
     configuration = payload.get("values")
     for reference, value in configuration.items():
-        if "\n" in str(value):
-            # value = value.replace("\n", "\\n")
-            pass
         if value == "true":
             value = True
         elif value == "false":
