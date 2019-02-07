@@ -6,7 +6,7 @@ from sys import print_exception
 from time import sleep, sleep_ms
 from ubinascii import hexlify
 
-
+# External modules that need to be placed under /flash/lib
 from mqtt import MQTTClient
 import wolk
 
@@ -20,11 +20,13 @@ wolk.ACTUATOR_REFERENCES = ["SW"]
 
 # WiFi
 WIFI_SSID = "WIFI_SSID"
+WIFI_AUTH = WLAN.WPA2  # WEP, WPA, WPA2, WPA2_ENT
 WIFI_PASSWORD = "WIFI_PASSWORD"
 
-# Relay Click
+# Relay Click connected on P3 (GPIO4)
 LIGHT_SWITCH = Pin("P3", mode=Pin.OUT)
 LIGHT_SWITCH.value(False)
+# Set onboard LED to dim red
 pycom.heartbeat(False)
 pycom.rgbled(0x100000)
 
@@ -35,21 +37,23 @@ def get_actuator_status(reference):
 
 
 def handle_actuation(reference, value):
-    if value is True:
-        LIGHT_SWITCH.value(True)
-        pycom.rgbled(0x001000)
-    else:
-        LIGHT_SWITCH.value(False)
-        pycom.rgbled(0x100000)
+    if reference == "SW":
+        if value is True:
+            LIGHT_SWITCH.value(True)
+            pycom.rgbled(0x001000)
+        else:
+            LIGHT_SWITCH.value(False)
+            pycom.rgbled(0x100000)
 
 
 # WIFI setup
 wlan = WLAN(mode=WLAN.STA)
-wlan.connect(WIFI_SSID, auth=(WLAN.WPA2, WIFI_PASSWORD), timeout=5000)
-sleep(2)  # establishing connection can take some time
+wlan.connect(WIFI_SSID, auth=(WIFI_AUTH, WIFI_PASSWORD), timeout=5000)
+sleep(2)  # wlan.isconnected can return a false positve so best to wait a bit
 while not wlan.isconnected():
     machine.idle()
 print("network configuration:", wlan.ifconfig())
+
 
 # WolkAbout setup
 MQTT_CLIENT = MQTTClient(

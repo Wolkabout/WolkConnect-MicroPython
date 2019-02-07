@@ -265,12 +265,19 @@ class WolkConnect:
             if self.actuation_handler:
                 self.actuation_handler(reference, value)
                 self.publish_actuator_status(reference)
+            return
 
         if "configuration" in topic:
             configuration = _deserialize_configuration_command(message)
             if self.configuration_handler:
                 self.configuration_handler(configuration)
                 self.publish_configuration()
+            return
+
+        print("Unhandled message received!")
+        print("topic: :" + str(topic))
+        print("message: :" + str(message))
+
 
     def connect(self):
         try:
