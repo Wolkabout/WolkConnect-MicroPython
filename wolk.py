@@ -24,7 +24,7 @@ def handle_actuation(reference, value):
     :param reference: Reference of the actuator
     :type reference: str
     :param value: Value to which to set the actuator
-    :type value: int or float or str
+    :type value: int or float or str or bool
     """
     pass
 
@@ -47,9 +47,10 @@ def get_actuator_status(reference):
     :param reference: Actuator reference
     :type reference: str
     :returns: (state, value)
-    :rtype: (wolk.ActuatorState, int or float or str)
+    :rtype: (wolk.ActuatorState, int or float or str or bool)
     """
     pass
+
 
 def get_configuration():
     """
@@ -65,6 +66,7 @@ def get_configuration():
     :rtype: dict
     """
     pass
+
 
 def handle_configuration(configuration):
     """
@@ -92,8 +94,8 @@ def _make_from_sensor_reading(reference, value, timestamp):
     if "\n" in str(value):
         value = value.replace("\n", "\\n")
     if '"' in str(value):
-        value = value.replace('"', '\\"')
-        value = value.replace('\\\\"', '\\"')
+        value = str(value.replace('"', '\\"'))
+        value = str(value.replace('\\\\"', '\\"'))
 
     if timestamp is None:
         return (
@@ -135,10 +137,10 @@ def _make_from_actuator_status(reference, value, state):
     elif value is False:
         value = "false"
     if "\n" in str(value):
-        value = value.replace("\n", "\\n")
+        value = str(value.replace("\n", "\\n"))
     if '"' in str(value):
-        value = value.replace('"', '\\"')
-        value = value.replace('\\\\"', '\\"')
+        value = str(value.replace('"', '\\"'))
+        value = str(value.replace('\\\\"', '\\"'))
 
     return (
         "actuators/status/" + DEVICE_KEY + "/" + reference,
@@ -163,10 +165,10 @@ def _make_from_configuration(configuration):
                 elif single_value is False:
                     single_value = "false"
                 if "\n" in str(single_value):
-                    single_value = single_value.replace("\n", "\\n")
+                    single_value = str(single_value.replace("\n", "\\n"))
                 if '"' in str(single_value):
-                    single_value = single_value.replace('"', '\\"')
-                    single_value = single_value.replace('\\\\"', '\\"')
+                    single_value = str(single_value.replace('"', '\\"'))
+                    single_value = str(single_value.replace('\\\\"', '\\"'))
             value = ",".join(value)
 
         if value is True:
@@ -175,10 +177,10 @@ def _make_from_configuration(configuration):
             value = "false"
 
         if "\n" in str(value):
-            value = value.replace("\n", "\\n")
+            value = str(value.replace("\n", "\\n"))
         if '"' in str(value):
-            value = value.replace('"', '\\"')
-            value = value.replace('\\\\"', '\\"')
+            value = str(value.replace('"', '\\"'))
+            value = str(value.replace('\\\\"', '\\"'))
 
         values += '"' + reference + '":"' + str(value) + '",'
     values = values[:-1]
@@ -192,7 +194,7 @@ def _deserialize_actuator_command(topic, message):
 
     value = payload.get("value")
     if "\n" in value:
-        value = value.replace("\n", "\\n")
+        value = str(value.replace("\n", "\\n"))
     if value == "true":
         value = True
     elif value == "false":
@@ -281,8 +283,7 @@ class WolkConnect:
                 for reference in ACTUATOR_REFERENCES:
                     self.mqtt_client.subscribe(topic_root + reference)
             if self.configuration_handler and self.configuration_provider:
-                self.mqtt_client.subscribe(
-                    "configurations/commands/" + DEVICE_KEY)
+                self.mqtt_client.subscribe("configurations/commands/" + DEVICE_KEY)
         except Exception as e:
             raise e
 
@@ -310,14 +311,17 @@ class WolkConnect:
 
     def publish_actuator_status(self, reference):
         if not self.actuation_handler or not self.actuator_status_provider:
-            raise RuntimeError('No actuator handler/provider!')
+            raise RuntimeError("No actuator handler/provider!")
         state, value = self.actuator_status_provider(reference)
         topic, message = _make_from_actuator_status(reference, value, state)
         self.mqtt_client.publish(topic, message)
 
     def publish_configuration(self):
         if not self.configuration_handler or not self.configuration_provider:
-            raise RuntimeError('No configuration handler/provider!')
+            raise RuntimeError("No configuration handler/provider!")
         configuration = self.configuration_provider()
         topic, message = _make_from_configuration(configuration)
+
+    def send_ping(self):
+        topic, message = _make_from_keep_alive_message()
         self.mqtt_client.publish(topic, message)
