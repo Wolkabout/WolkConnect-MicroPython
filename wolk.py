@@ -150,7 +150,7 @@ def _make_from_actuator_status(reference, value, state):
 
 def _make_from_keep_alive_message():
     global DEVICE_KEY
-    return ("ping/" + DEVICE_KEY, "")
+    return ("ping/" + DEVICE_KEY, "ping")
 
 
 def _make_from_configuration(configuration):

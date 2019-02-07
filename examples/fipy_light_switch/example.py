@@ -1,0 +1,80 @@
+from crypto import getrandbits
+from machine import unique_id, Pin, Timer
+from network import WLAN
+import pycom
+from sys import print_exception
+from time import sleep, sleep_ms
+from ubinascii import hexlify
+
+
+from mqtt import MQTTClient
+import wolk
+
+# WolkAbout
+CLIENT_ID = hexlify(unique_id())
+wolk.HOST = "api-demo.wolkabout.com"
+wolk.PORT = 1883
+wolk.DEVICE_KEY = "device_key"
+wolk.DEVICE_PASSWORD = "some_password"
+wolk.ACTUATOR_REFERENCES = ["SW"]
+
+# WiFi
+WIFI_SSID = "WIFI_SSID"
+WIFI_PASSWORD = "WIFI_PASSWORD"
+
+# Relay Click
+LIGHT_SWITCH = Pin("P3", mode=Pin.OUT)
+LIGHT_SWITCH.value(False)
+pycom.heartbeat(False)
+pycom.rgbled(0x100000)
+
+
+def get_actuator_status(reference):
+    if reference == "SW":
+        return wolk.ACTUATOR_STATE_READY, LIGHT_SWITCH.value()
+
+
+def handle_actuation(reference, value):
+    if value is True:
+        LIGHT_SWITCH.value(True)
+        pycom.rgbled(0x001000)
+    else:
+        LIGHT_SWITCH.value(False)
+        pycom.rgbled(0x100000)
+
+
+# WIFI setup
+wlan = WLAN(mode=WLAN.STA)
+wlan.connect(WIFI_SSID, auth=(WLAN.WPA2, WIFI_PASSWORD), timeout=5000)
+sleep(2)  # establishing connection can take some time
+while not wlan.isconnected():
+    machine.idle()
+print("network configuration:", wlan.ifconfig())
+
+# WolkAbout setup
+MQTT_CLIENT = MQTTClient(
+    CLIENT_ID, wolk.HOST, wolk.PORT, wolk.DEVICE_KEY, wolk.DEVICE_PASSWORD
+)
+
+WOLK_DEVICE = wolk.WolkConnect(MQTT_CLIENT, handle_actuation, get_actuator_status)
+
+
+try:
+    WOLK_DEVICE.connect()
+    WOLK_DEVICE.publish_actuator_status("SW")
+    LOOP_COUNTER = 0
+    while True:
+        LOOP_COUNTER += 1
+        try:
+            MQTT_CLIENT.check_msg()
+        except OSError as os_e:
+            # sometimes an empty socket read happens
+            # and that needlessly kills the script
+            pass
+        if LOOP_COUNTER % 3000 == 0:  # every 60 seconds
+            WOLK_DEVICE.send_ping()
+            LOOP_COUNTER = 0
+        sleep_ms(20)
+except Exception as e:
+    WOLK_DEVICE.disconnect()
+    print_exception(e)
