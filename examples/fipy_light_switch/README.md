@@ -1,6 +1,6 @@
 This example controls the state of a lamp by using MikroElektronika's [Relay click](https://www.mikroe.com/relay-click) connected to Pycom's [FiPy](https://pycom.io/product/fipy/) board.
 
-[schematic]
+![hackster](https://user-images.githubusercontent.com/34022788/52565680-ce29b780-2e07-11e9-9358-73d961dd4db4.png)
 
 Pycom's [mqtt](https://github.com/pycom/pycom-libraries/blob/master/lib/mqtt/mqtt.py) module is required for this example and it should be copied onto the board under the *flash/lib* directory.
 In order to communicate with WolkAbout IoT Platform, the *wolk.py* module from the root of this repository is used and should also be copied onto the board under the *flash/lib* directory.
