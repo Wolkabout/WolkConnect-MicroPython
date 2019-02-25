@@ -283,8 +283,8 @@ class WolkConnect:
         try:
             global DEVICE_KEY
             global ACTUATOR_REFERENCES
-            self.mqtt_client.connect()
             self.mqtt_client.set_last_will("lastwill/" + DEVICE_KEY, "Gone offline")
+            self.mqtt_client.connect()
             if ACTUATOR_REFERENCES:
                 topic_root = "actuators/commands/" + DEVICE_KEY + "/"
                 for reference in ACTUATOR_REFERENCES:
