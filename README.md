@@ -33,7 +33,7 @@ Clone this repository and then copy ``wolk.py`` into the *lib* directory of your
 
 ### Establishing connection with WolkAbout IoT Platform
 
-Create a device on WolkAbout IoT platform by importing [simple-example-manifest.json](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/simple-example-manifest.json).<br />
+Create a device on WolkAbout IoT platform by importing [Simple-example-deviceTemplate.json](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/Simple-example-deviceTemplate.json).<br />
 This manifest fits [main.py](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/main.py) and demonstrates the sending of a temperature sensor reading.
 
 ```python

@@ -5,7 +5,7 @@ This example controls the state of a lamp by using MikroElektronika's [Relay cli
 Pycom's [mqtt](https://github.com/pycom/pycom-libraries/blob/master/lib/mqtt/mqtt.py) module is required for this example and it should be copied onto the board under the *flash/lib* directory.
 In order to communicate with WolkAbout IoT Platform, the *wolk.py* module from the root of this repository is used and should also be copied onto the board under the *flash/lib* directory.
 
-To run this example, a device must be created on WolkAbout IoT Platform from a *Smart light* device template. This device template can easily be created by importing *Smart light-manifest.json*.
+To run this example, a device must be created on WolkAbout IoT Platform from a *Smart light* device template. This device template can easily be created by importing *Smart light-deviceTemplate.json*.
 The device credentials received when the device is created should be entered into *example.py* on lines 17 & 18:
 ```python
 wolk.DEVICE_KEY = "device_key"
