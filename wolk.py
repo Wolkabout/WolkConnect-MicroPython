@@ -97,16 +97,12 @@ def _make_from_sensor_reading(reference, value, timestamp):
         value = str(value.replace('"', '\\"'))
         value = str(value.replace('\\\\"', '\\"'))
 
-    if timestamp is None:
-        return (
-            "readings/" + DEVICE_KEY + "/" + reference,
-            '{"data":"' + str(value) + '"}',
-        )
+    topic = "d2p/sensor_reading/d/" + DEVICE_KEY + "/r/" + str(reference)
+    payload = {"data": str(value)}
+    if timestamp is not None:
+        payload["utc"] = int(timestamp)
 
-    return (
-        "readings/" + DEVICE_KEY + "/" + reference,
-        '{"data":"' + str(value) + '","utc": ' + str(timestamp) + "}",
-    )
+    return (topic, json.dumps(payload))
 
 
 def _make_from_alarm(reference, active, timestamp):
@@ -115,13 +111,13 @@ def _make_from_alarm(reference, active, timestamp):
         active = "ON"
     else:
         active = "OFF"
-    if timestamp is None:
-        return ("events/" + DEVICE_KEY + "/" + reference, '{"data":"' + active + '"}')
 
-    return (
-        "events/" + DEVICE_KEY + "/" + reference,
-        '{"data":"' + active + '","utc":' + str(timestamp) + "}",
-    )
+    topic = "d2p/events/d/" + DEVICE_KEY + "/r/" + str(reference)
+    payload = {"data": active}
+    if timestamp is not None:
+        payload["utc"] = int(timestamp)
+
+    return (topic, json.dumps(payload))
 
 
 def _make_from_actuator_status(reference, value, state):
@@ -132,6 +128,7 @@ def _make_from_actuator_status(reference, value, state):
         state = "BUSY"
     else:
         state = "ERROR"
+
     if value is True:
         value = "true"
     elif value is False:
@@ -142,20 +139,17 @@ def _make_from_actuator_status(reference, value, state):
         value = str(value.replace('"', '\\"'))
         value = str(value.replace('\\\\"', '\\"'))
 
-    return (
-        "actuators/status/" + DEVICE_KEY + "/" + reference,
-        '{"status":"' + state + '","value":"' + str(value) + '"}',
-    )
-
-
-def _make_from_keep_alive_message():
-    global DEVICE_KEY
-    return ("ping/" + DEVICE_KEY, "ping")
+    topic = "d2p/actuator_status/d/" + DEVICE_KEY + "/r/" + reference
+    payload = {"status": state}
+    if state != "ERROR":
+        payload["value"] = value
+    return (topic, json.dumps(payload))
 
 
 def _make_from_configuration(configuration):
     global DEVICE_KEY
-    values = str()
+    topic = "d2p/configuration_get/d/" + DEVICE_KEY
+    values = {}
 
     for reference, value in configuration.items():
         if isinstance(value, tuple):
@@ -182,9 +176,10 @@ def _make_from_configuration(configuration):
             value = str(value.replace('"', '\\"'))
             value = str(value.replace('\\\\"', '\\"'))
 
-        values += '"' + reference + '":"' + str(value) + '",'
-    values = values[:-1]
-    return ("configurations/current/" + DEVICE_KEY, '{"values":{' + values + "}}")
+        values[reference] = str(value)
+    payload = {"values": values}
+
+    return (topic, json.dumps(payload))
 
 
 def _deserialize_actuator_command(topic, message):
@@ -261,6 +256,9 @@ class WolkConnect:
 
     def _inbound_message_handler(self, topic, message):
         if "actuator" in topic:
+            if "get" in topic:
+                self.publish_actuator_status(topic.split("/")[-1])
+                return
             reference, value = _deserialize_actuator_command(topic, message)
             if self.actuation_handler:
                 self.actuation_handler(reference, value)
@@ -268,6 +266,9 @@ class WolkConnect:
             return
 
         if "configuration" in topic:
+            if "get" in topic:
+                self.publish_configuration()
+                return
             configuration = _deserialize_configuration_command(message)
             if self.configuration_handler:
                 self.configuration_handler(configuration)
@@ -278,19 +279,23 @@ class WolkConnect:
         print("topic: :" + str(topic))
         print("message: :" + str(message))
 
-
     def connect(self):
         try:
             global DEVICE_KEY
             global ACTUATOR_REFERENCES
-            self.mqtt_client.set_last_will("lastwill/" + DEVICE_KEY, "Gone offline")
+            self.mqtt_client.set_last_will(
+                "lastwill/" + DEVICE_KEY, "Gone offline"
+            )
             self.mqtt_client.connect()
             if ACTUATOR_REFERENCES:
-                topic_root = "actuators/commands/" + DEVICE_KEY + "/"
+                topic_get = "p2d/actuator_get/d/" + DEVICE_KEY + "/r/"
+                topic_set = "p2d/actuator_set/d/" + DEVICE_KEY + "/r/"
                 for reference in ACTUATOR_REFERENCES:
-                    self.mqtt_client.subscribe(topic_root + reference)
+                    self.mqtt_client.subscribe(topic_get + reference)
+                    self.mqtt_client.subscribe(topic_set + reference)
             if self.configuration_handler and self.configuration_provider:
-                self.mqtt_client.subscribe("configurations/commands/" + DEVICE_KEY)
+                self.mqtt_client.subscribe("p2d/configuration_get/d/" + DEVICE_KEY)
+                self.mqtt_client.subscribe("p2d/configuration_set/d/" + DEVICE_KEY)
         except Exception as e:
             raise e
 
@@ -328,7 +333,3 @@ class WolkConnect:
             raise RuntimeError("No configuration handler/provider!")
         configuration = self.configuration_provider()
         topic, message = _make_from_configuration(configuration)
-
-    def send_ping(self):
-        topic, message = _make_from_keep_alive_message()
-        self.mqtt_client.publish(topic, message)

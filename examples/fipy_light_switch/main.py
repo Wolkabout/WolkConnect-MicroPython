@@ -76,7 +76,7 @@ try:
             # and that needlessly kills the script
             pass
         if LOOP_COUNTER % 3000 == 0:  # every 60 seconds
-            WOLK_DEVICE.send_ping()
+            WOLK_DEVICE.publish_actuator_status("SW")
             LOOP_COUNTER = 0
         sleep_ms(20)
 except Exception as e:

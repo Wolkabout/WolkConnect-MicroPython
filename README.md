@@ -79,9 +79,3 @@ WOLK_DEVICE.publish()
 ```python
 WOLK_DEVICE.disconnect()
 ```
-
-### Keep alive
-When you want your device to stay connected and you are not sending anything to the platform, a keep alive message should be sent periodically, say every 5 minutes, with:
-```python
-WOLK_DEVICE.send_ping()
-```
