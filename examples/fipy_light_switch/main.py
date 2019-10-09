@@ -60,7 +60,9 @@ MQTT_CLIENT = MQTTClient(
     CLIENT_ID, wolk.HOST, wolk.PORT, wolk.DEVICE_KEY, wolk.DEVICE_PASSWORD
 )
 
-WOLK_DEVICE = wolk.WolkConnect(MQTT_CLIENT, handle_actuation, get_actuator_status)
+WOLK_DEVICE = wolk.WolkConnect(
+    MQTT_CLIENT, handle_actuation, get_actuator_status
+)
 
 
 try:

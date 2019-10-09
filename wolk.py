@@ -294,8 +294,12 @@ class WolkConnect:
                     self.mqtt_client.subscribe(topic_get + reference)
                     self.mqtt_client.subscribe(topic_set + reference)
             if self.configuration_handler and self.configuration_provider:
-                self.mqtt_client.subscribe("p2d/configuration_get/d/" + DEVICE_KEY)
-                self.mqtt_client.subscribe("p2d/configuration_set/d/" + DEVICE_KEY)
+                self.mqtt_client.subscribe(
+                    "p2d/configuration_get/d/" + DEVICE_KEY
+                )
+                self.mqtt_client.subscribe(
+                    "p2d/configuration_set/d/" + DEVICE_KEY
+                )
         except Exception as e:
             raise e
 
