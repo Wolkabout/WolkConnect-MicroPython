@@ -19,7 +19,7 @@
 MicroPython library which provides easy connectivity to [WolkAbout IoT Platform](https://demo.wolkabout.com/#/login).
 
 Supported device communication protocol(s):
-- JsonSingleReferenceProtocol
+- WolkAbout Protocol
 
 ## Requirements
 

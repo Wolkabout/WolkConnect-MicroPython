@@ -1,9 +1,27 @@
+"""Library for communicating with WolkAbout IoT Platform."""
+#   Copyright 2020 WolkAbout Technology s.r.o.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 import json
+import utime
+from sys import print_exception
 
 
-ACTUATOR_STATE_READY = 0
-ACTUATOR_STATE_BUSY = 1
-ACTUATOR_STATE_ERROR = 2
+EPOCH_ADJUSTMENT = 946684800
+
+ACTUATOR_STATE_READY = "READY"
+ACTUATOR_STATE_BUSY = "BUSY"
+ACTUATOR_STATE_ERROR = "ERROR"
 
 DEVICE_KEY = None
 DEVICE_PASSWORD = None
@@ -101,48 +119,45 @@ def _make_from_sensor_reading(reference, value, timestamp):
     payload = {"data": str(value)}
     if timestamp is not None:
         payload["utc"] = int(timestamp)
+    else:
+        payload["utc"] = utime.time() + EPOCH_ADJUSTMENT
 
     return (topic, json.dumps(payload))
 
 
 def _make_from_alarm(reference, active, timestamp):
     global DEVICE_KEY
-    if active is True:
-        active = "ON"
-    else:
-        active = "OFF"
-
     topic = "d2p/events/d/" + DEVICE_KEY + "/r/" + str(reference)
+
+    if isinstance(active, bool):
+        active = str(active).lower()
+
     payload = {"data": active}
     if timestamp is not None:
         payload["utc"] = int(timestamp)
+    else:
+        payload["utc"] = utime.time() + EPOCH_ADJUSTMENT
 
     return (topic, json.dumps(payload))
 
 
 def _make_from_actuator_status(reference, value, state):
     global DEVICE_KEY
-    if state == ACTUATOR_STATE_READY:
-        state = "READY"
-    elif state == ACTUATOR_STATE_BUSY:
-        state = "BUSY"
-    else:
-        state = "ERROR"
-
-    if value is True:
-        value = "true"
-    elif value is False:
-        value = "false"
-    if "\n" in str(value):
-        value = str(value.replace("\n", "\\n"))
-    if '"' in str(value):
-        value = str(value.replace('"', '\\"'))
-        value = str(value.replace('\\\\"', '\\"'))
+    global ACTUATOR_STATE_READY
+    global ACTUATOR_STATE_BUSY
+    global ACTUATOR_STATE_ERROR
 
     topic = "d2p/actuator_status/d/" + DEVICE_KEY + "/r/" + reference
+
+    if state not in [ACTUATOR_STATE_READY, ACTUATOR_STATE_BUSY]:
+        state = ACTUATOR_STATE_ERROR
+
+    if isinstance(value, bool):
+        value = str(value).lower()
+
     payload = {"status": state}
-    if state != "ERROR":
-        payload["value"] = value
+    if state != ACTUATOR_STATE_ERROR:
+        payload["value"] = str(value)
     return (topic, json.dumps(payload))
 
 
@@ -152,29 +167,8 @@ def _make_from_configuration(configuration):
     values = {}
 
     for reference, value in configuration.items():
-        if isinstance(value, tuple):
-            for single_value in value:
-                if single_value is True:
-                    single_value = "true"
-                elif single_value is False:
-                    single_value = "false"
-                if "\n" in str(single_value):
-                    single_value = str(single_value.replace("\n", "\\n"))
-                if '"' in str(single_value):
-                    single_value = str(single_value.replace('"', '\\"'))
-                    single_value = str(single_value.replace('\\\\"', '\\"'))
-            value = ",".join(value)
-
-        if value is True:
-            value = "true"
-        elif value is False:
-            value = "false"
-
-        if "\n" in str(value):
-            value = str(value.replace("\n", "\\n"))
-        if '"' in str(value):
-            value = str(value.replace('"', '\\"'))
-            value = str(value.replace('\\\\"', '\\"'))
+        if isinstance(value, bool):
+            value = str(value).lower()
 
         values[reference] = str(value)
     payload = {"values": values}
@@ -204,24 +198,21 @@ def _deserialize_configuration_command(message):
     for reference, value in configuration.items():
         if value == "true":
             value = True
-        elif value == "false":
+            continue
+        if value == "false":
             value = False
+            continue
 
-        if isinstance(value, bool):
-            pass
-        else:
-            if "," in value:
-                values_list = value.split(",")
+        if "." in value:
+            try:
+                value = float(value)
+            except ValueError:
                 try:
-                    if any("." in value for value in values_list):
-                        values_list = [float(value) for value in values_list]
-                    else:
-                        values_list = [int(value) for value in values_list]
+                    value = int(value)
                 except ValueError:
                     pass
 
-                configuration[reference] = tuple(values_list)
-        return configuration
+    return configuration
 
 
 class WolkConnect:
@@ -301,7 +292,7 @@ class WolkConnect:
                     "p2d/configuration_set/d/" + DEVICE_KEY
                 )
         except Exception as e:
-            raise e
+            print_exception(e)
 
     def disconnect(self):
         global DEVICE_KEY
