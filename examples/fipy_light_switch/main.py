@@ -1,14 +1,19 @@
-from crypto import getrandbits
-from machine import unique_id, Pin, Timer
-from network import WLAN
-import pycom
 from sys import print_exception
-from time import sleep, sleep_ms
+from time import sleep
+from time import sleep_ms
+
+import pycom
+from crypto import getrandbits
+from machine import Pin
+from machine import Timer
+from machine import unique_id
+from mqtt import MQTTClient
+from network import WLAN
 from ubinascii import hexlify
 
-# External modules that need to be placed under /flash/lib
-from mqtt import MQTTClient
 import wolk
+
+# External modules that need to be placed under /flash/lib
 
 # WolkAbout
 CLIENT_ID = hexlify(unique_id())
@@ -64,6 +69,7 @@ WOLK_DEVICE = wolk.WolkConnect(
     MQTT_CLIENT, handle_actuation, get_actuator_status
 )
 
+SLEEP_INTERVAL_MS = 20
 
 try:
     WOLK_DEVICE.connect()
@@ -74,13 +80,13 @@ try:
         try:
             MQTT_CLIENT.check_msg()
         except OSError as os_e:
-            # sometimes an empty socket read happens
+            # sometimes an 'empty socket read' error happens
             # and that needlessly kills the script
             pass
         if LOOP_COUNTER % 3000 == 0:  # every 60 seconds
             WOLK_DEVICE.publish_actuator_status("SW")
             LOOP_COUNTER = 0
-        sleep_ms(20)
+        sleep_ms(SLEEP_INTERVAL_MS)
 except Exception as e:
     WOLK_DEVICE.disconnect()
     print_exception(e)

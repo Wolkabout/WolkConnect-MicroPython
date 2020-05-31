@@ -1,4 +1,4 @@
-"""Connect to WolkAbout IoT Platform and periodically send a sensor reading."""
+"""Connect to WolkAbout IoT Platform and periodically send sensor data."""
 #   Copyright 2020 WolkAbout Technology s.r.o.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +12,16 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-from sys import print_exception
-from time import sleep
-import network
 from machine import unique_id
+from time import sleep
 from ubinascii import hexlify
+import network
 from urandom import getrandbits
+from sys import print_exception
 
 # External modules that need to be placed under /flash/lib
 from umqtt.simple import MQTTClient
 import wolk
-
 
 # WolkAbout
 CLIENT_ID = hexlify(unique_id())

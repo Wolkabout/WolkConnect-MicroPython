@@ -13,8 +13,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 import json
-import utime
 from sys import print_exception
+
+import utime
 
 
 EPOCH_ADJUSTMENT = 946684800
@@ -23,8 +24,8 @@ ACTUATOR_STATE_READY = "READY"
 ACTUATOR_STATE_BUSY = "BUSY"
 ACTUATOR_STATE_ERROR = "ERROR"
 
-DEVICE_KEY = None
-DEVICE_PASSWORD = None
+DEVICE_KEY = "device_key"
+DEVICE_PASSWORD = "some_password"
 ACTUATOR_REFERENCES = []
 HOST = "api-demo.wolkabout.com"
 PORT = 1883
