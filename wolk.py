@@ -15,10 +15,6 @@
 import json
 from sys import print_exception
 
-import utime
-
-
-EPOCH_ADJUSTMENT = 946684800
 
 ACTUATOR_STATE_READY = "READY"
 ACTUATOR_STATE_BUSY = "BUSY"
@@ -105,23 +101,14 @@ def handle_configuration(configuration):
 def _make_from_sensor_reading(reference, value, timestamp):
     global DEVICE_KEY
     if isinstance(value, tuple):
-        value = ",".join(value)
-    if value is True:
-        value = "true"
-    elif value is False:
-        value = "false"
-    if "\n" in str(value):
-        value = value.replace("\n", "\\n")
-    if '"' in str(value):
-        value = str(value.replace('"', '\\"'))
-        value = str(value.replace('\\\\"', '\\"'))
+        value = ",".join(map(str, value))
+    elif isinstance(value, bool):
+        value = str(value).lower()
 
     topic = "d2p/sensor_reading/d/" + DEVICE_KEY + "/r/" + str(reference)
     payload = {"data": str(value)}
     if timestamp is not None:
         payload["utc"] = int(timestamp)
-    else:
-        payload["utc"] = utime.time() + EPOCH_ADJUSTMENT
 
     return (topic, json.dumps(payload))
 
@@ -136,17 +123,12 @@ def _make_from_alarm(reference, active, timestamp):
     payload = {"data": active}
     if timestamp is not None:
         payload["utc"] = int(timestamp)
-    else:
-        payload["utc"] = utime.time() + EPOCH_ADJUSTMENT
 
     return (topic, json.dumps(payload))
 
 
 def _make_from_actuator_status(reference, value, state):
     global DEVICE_KEY
-    global ACTUATOR_STATE_READY
-    global ACTUATOR_STATE_BUSY
-    global ACTUATOR_STATE_ERROR
 
     topic = "d2p/actuator_status/d/" + DEVICE_KEY + "/r/" + reference
 
@@ -163,7 +145,6 @@ def _make_from_actuator_status(reference, value, state):
 
 
 def _make_from_configuration(configuration):
-    global DEVICE_KEY
     topic = "d2p/configuration_get/d/" + DEVICE_KEY
     values = {}
 
@@ -193,23 +174,22 @@ def _deserialize_actuator_command(topic, message):
 
 
 def _deserialize_configuration_command(message):
-    payload = json.loads(message)
+    configuration = json.loads(message)
 
-    configuration = payload.get("values")
     for reference, value in configuration.items():
         if value == "true":
-            value = True
+            configuration[reference] = True
             continue
         if value == "false":
-            value = False
+            configuration[reference] = False
             continue
 
         if "." in value:
             try:
-                value = float(value)
+                configuration[reference] = float(value)
             except ValueError:
                 try:
-                    value = int(value)
+                    configuration[reference] = int(value)
                 except ValueError:
                     pass
 
@@ -273,8 +253,6 @@ class WolkConnect:
 
     def connect(self):
         try:
-            global DEVICE_KEY
-            global ACTUATOR_REFERENCES
             self.mqtt_client.set_last_will(
                 "lastwill/" + DEVICE_KEY, "Gone offline"
             )
@@ -296,7 +274,6 @@ class WolkConnect:
             print_exception(e)
 
     def disconnect(self):
-        global DEVICE_KEY
         self.mqtt_client.publish("lastwill/" + DEVICE_KEY, "Gone offline")
         self.mqtt_client.disconnect()
 
@@ -329,3 +306,4 @@ class WolkConnect:
             raise RuntimeError("No configuration handler/provider!")
         configuration = self.configuration_provider()
         topic, message = _make_from_configuration(configuration)
+        self.mqtt_client.publish(topic, message)

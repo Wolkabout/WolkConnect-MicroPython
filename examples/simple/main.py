@@ -27,7 +27,7 @@ import wolk
 # WolkAbout
 CLIENT_ID = hexlify(unique_id())
 wolk.DEVICE_KEY = "device_key"
-wolk.DEVICE_PASSWORD = "some_pasword"
+wolk.DEVICE_PASSWORD = "some_password"
 
 wolk.HOST = "api-demo.wolkabout.com"
 wolk.PORT = 1883
@@ -39,7 +39,7 @@ WIFI_PASSWORD = "WIFI_PASSWORD"
 WLAN = network.WLAN(network.STA_IF)
 WLAN.active(True)
 if not WLAN.isconnected():
-    print("connecting to network...")
+    print("connecting to network {}...".format(WIFI_SSID))
     WLAN.connect(WIFI_SSID, WIFI_PASSWORD)
     while not WLAN.isconnected():
         pass
@@ -53,11 +53,10 @@ WOLK_DEVICE = wolk.WolkConnect(MQTT_CLIENT)
 
 try:
     WOLK_DEVICE.connect()
-
     while True:
         temperature = getrandbits(6)
         WOLK_DEVICE.add_sensor_reading("T", temperature)
-        print("publishing temperature reading: " + str(temperature))
+        print("Publishing temperature reading: " + str(temperature))
         WOLK_DEVICE.publish()
         sleep(5)
 except Exception as e:

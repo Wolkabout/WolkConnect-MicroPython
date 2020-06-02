@@ -26,7 +26,8 @@ import wolk
 # WolkAbout
 CLIENT_ID = hexlify(unique_id())
 wolk.DEVICE_KEY = "device_key"
-wolk.DEVICE_PASSWORD = "some_pasword"
+wolk.DEVICE_PASSWORD = "some_password"
+wolk.ACTUATOR_REFERENCES = ["SW", "SL"]
 
 wolk.HOST = "api-demo.wolkabout.com"
 wolk.PORT = 1883
@@ -38,7 +39,7 @@ WIFI_PASSWORD = "WIFI_PASSWORD"
 WLAN = network.WLAN(network.STA_IF)
 WLAN.active(True)
 if not WLAN.isconnected():
-    print("connecting to network...")
+    print("connecting to network {}...".format(WIFI_SSID))
     WLAN.connect(WIFI_SSID, WIFI_PASSWORD)
     while not WLAN.isconnected():
         pass
@@ -48,17 +49,109 @@ MQTT_CLIENT = MQTTClient(
     CLIENT_ID, wolk.HOST, wolk.PORT, wolk.DEVICE_KEY, wolk.DEVICE_PASSWORD
 )
 
-WOLK_DEVICE = wolk.WolkConnect(MQTT_CLIENT)
+# Device actuators
+SWITCH = False
+SLIDER = 0
+
+
+def get_actuator_status(reference):
+    if reference == "SW":
+        return wolk.ACTUATOR_STATE_READY, SWITCH
+    if reference == "SL":
+        return wolk.ACTUATOR_STATE_READY, SLIDER
+
+
+def handle_actuation(reference, value):
+    global SWITCH
+    global SLIDER
+    print("Setting reference {} to value {}".format(reference, value))
+    if reference == "SW":
+        SWITCH = value
+        return
+    if reference == "SL":
+        SLIDER = value
+
+
+# Device configuration
+HEART_BEAT = 5
+LOG_LEVEL = "info"
+ENABLED_FEEDS = ["T", "P", "H", "ACL"]
+
+
+def get_configuration():
+    formatted = ",".join(ENABLED_FEEDS)
+
+    return {"HB": HEART_BEAT, "LL": LOG_LEVEL, "EF": formatted}
+
+
+def handle_configuration(configuration):
+    global HEART_BEAT
+    global LOG_LEVEL
+    global ENABLED_FEEDS
+
+    for reference, value in configuration.items():
+        print("Setting reference {} to value {}".format(reference, value))
+        if reference == "LL":
+            LOG_LEVEL = value
+            continue
+
+        if reference == "HB":
+            HEART_BEAT = value
+            continue
+
+        if reference == "EF":
+            ENABLED_FEEDS = value.split(",")
+
+
+def randint(min, max):
+    span = max - min + 1
+    div = 0x3fffffff // span
+    offset = getrandbits(30) // div
+    val = min + offset
+    return val
+
+
+WOLK_DEVICE = wolk.WolkConnect(
+    MQTT_CLIENT,
+    handle_actuation,
+    get_actuator_status,
+    handle_configuration,
+    get_configuration,
+)
+
 
 try:
     WOLK_DEVICE.connect()
+    WOLK_DEVICE.publish_configuration()
+    WOLK_DEVICE.publish_actuator_status("SW")
+    WOLK_DEVICE.publish_actuator_status("SL")
 
     while True:
-        temperature = getrandbits(6)
-        WOLK_DEVICE.add_sensor_reading("T", temperature)
-        print("publishing temperature reading: " + str(temperature))
+        try:
+            MQTT_CLIENT.check_msg()
+        except OSError as os_e:
+            # sometimes an 'empty socket read' error happens
+            # and that needlessly kills the script
+            pass
+        if "T" in ENABLED_FEEDS:
+            temperature = randint(10, 25)
+            WOLK_DEVICE.add_sensor_reading("T", temperature)
+        if "P" in ENABLED_FEEDS:
+            pressure = randint(990, 1010)
+            WOLK_DEVICE.add_sensor_reading("P", pressure)
+        if "H" in ENABLED_FEEDS:
+            humidity = randint(0, 100)
+            WOLK_DEVICE.add_sensor_reading("H", humidity)
+            if humidity > 80:
+                WOLK_DEVICE.add_alarm("HH", True)
+            else:
+                WOLK_DEVICE.add_alarm("HH", False)
+        if "ACL" in ENABLED_FEEDS:
+            accelerometer = (randint(0, 5), randint(0, 5), randint(0, 5))
+            WOLK_DEVICE.add_sensor_reading("ACL", accelerometer)
+
         WOLK_DEVICE.publish()
-        sleep(5)
+        sleep(HEART_BEAT)
 except Exception as e:
     print_exception(e)
     WOLK_DEVICE.disconnect()
