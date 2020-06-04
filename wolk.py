@@ -228,9 +228,6 @@ class WolkConnect:
 
     def _inbound_message_handler(self, topic, message):
         if "actuator" in topic:
-            if "get" in topic:
-                self.publish_actuator_status(topic.split("/")[-1])
-                return
             reference, value = _deserialize_actuator_command(topic, message)
             if self.actuation_handler:
                 self.actuation_handler(reference, value)
@@ -238,9 +235,6 @@ class WolkConnect:
             return
 
         if "configuration" in topic:
-            if "get" in topic:
-                self.publish_configuration()
-                return
             configuration = _deserialize_configuration_command(message)
             if self.configuration_handler:
                 self.configuration_handler(configuration)
