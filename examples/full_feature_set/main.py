@@ -122,6 +122,19 @@ WOLK_DEVICE = wolk.WolkConnect(
 
 try:
     WOLK_DEVICE.connect()
+
+    # WOLK_DEVICE.send_keep_alive()
+    # Sending keep alive message will cause the Platform to respond
+    # the current UTC timestamp in milliseconds that can be accessed with:
+    # WOLK_DEVICE.request_timestamp()
+    # if this method is called without sending ping and checking if
+    # the client has received any messages, it will return None
+
+    # This timestamp can be used to timestamp messages if they are
+    # going to be placed into storage for a longer time and
+    # data history is important, eg:
+    # WOLK_DEVICE.add_sensor_reading(reference, data, timestamp)
+
     WOLK_DEVICE.publish_configuration()
     WOLK_DEVICE.publish_actuator_status("SW")
     WOLK_DEVICE.publish_actuator_status("SL")
@@ -129,7 +142,7 @@ try:
     while True:
         try:
             MQTT_CLIENT.check_msg()
-        except OSError as os_e:
+        except OSError:
             # sometimes an 'empty socket read' error happens
             # and that needlessly kills the script
             pass
@@ -151,6 +164,7 @@ try:
             WOLK_DEVICE.add_sensor_reading("ACL", accelerometer)
 
         WOLK_DEVICE.publish()
+        WOLK_DEVICE.send_keep_alive()
         sleep(HEART_BEAT)
 except Exception as e:
     print_exception(e)

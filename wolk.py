@@ -158,6 +158,17 @@ def _make_from_configuration(configuration):
     return (topic, json.dumps(payload))
 
 
+def _make_keep_alive():
+    topic = "ping/" + DEVICE_KEY
+    return (topic, None)
+
+
+def _deserialize_keep_alive_response(topic, message):
+    payload = json.loads(message)
+    value = payload.get("value")
+    return value
+
+
 def _deserialize_actuator_command(topic, message):
     topic = topic.decode()
     reference = topic.split("/")[-1]
@@ -212,6 +223,7 @@ class WolkConnect:
         self.actuator_status_provider = actuator_status_provider
         self.configuration_handler = configuration_handler
         self.configuration_provider = configuration_provider
+        self.platform_timestamp = None
 
         self.storage_size = storage_size
         self.outbound_message_list = []
@@ -239,6 +251,10 @@ class WolkConnect:
             if self.configuration_handler:
                 self.configuration_handler(configuration)
                 self.publish_configuration()
+            return
+
+        if "pong" in topic:
+            self.platform_timestamp = _deserialize_keep_alive_response(message)
             return
 
         print("Unhandled message received!")
@@ -301,3 +317,10 @@ class WolkConnect:
         configuration = self.configuration_provider()
         topic, message = _make_from_configuration(configuration)
         self.mqtt_client.publish(topic, message)
+
+    def send_keep_alive(self):
+        topic, payload = _make_keep_alive()
+        self.mqtt_client.publish(topic, payload)
+
+    def request_timestamp(self):
+        return self.platform_timestamp
