@@ -37,8 +37,8 @@ git clone https://github.com/Wolkabout/WolkConnect-MicroPython.git
 
 ### Establishing connection with WolkAbout IoT Platform
 
-Create a device on WolkAbout IoT platform by importing [Simple-example-deviceTemplate.json](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/Simple-example-deviceTemplate.json).  
-This manifest fits [main.py](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/main.py) and demonstrates the sending of a temperature sensor reading.
+Create a device on WolkAbout IoT platform by using the provided `Simple example` device type.  
+This device type fits [main.py](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/main.py) and demonstrates the sending of a temperature sensor reading.
 
 ```python
 from [mqtt] import MQTTClient
