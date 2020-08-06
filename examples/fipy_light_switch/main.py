@@ -1,14 +1,33 @@
-from crypto import getrandbits
-from machine import unique_id, Pin, Timer
-from network import WLAN
-import pycom
+"""Connect to WolkAbout IoT Platform and control a light switch."""
+#   Copyright 2020 WolkAbout Technology s.r.o.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 from sys import print_exception
-from time import sleep, sleep_ms
+from time import sleep
+from time import sleep_ms
+
+import pycom
+from crypto import getrandbits
+from machine import Pin
+from machine import Timer
+from machine import unique_id
+from mqtt import MQTTClient
+from network import WLAN
 from ubinascii import hexlify
 
-# External modules that need to be placed under /flash/lib
-from mqtt import MQTTClient
 import wolk
+
+# External modules that need to be placed under /flash/lib
 
 # WolkAbout
 CLIENT_ID = hexlify(unique_id())
@@ -60,8 +79,11 @@ MQTT_CLIENT = MQTTClient(
     CLIENT_ID, wolk.HOST, wolk.PORT, wolk.DEVICE_KEY, wolk.DEVICE_PASSWORD
 )
 
-WOLK_DEVICE = wolk.WolkConnect(MQTT_CLIENT, handle_actuation, get_actuator_status)
+WOLK_DEVICE = wolk.WolkConnect(
+    MQTT_CLIENT, handle_actuation, get_actuator_status
+)
 
+SLEEP_INTERVAL_MS = 20
 
 try:
     WOLK_DEVICE.connect()
@@ -72,13 +94,13 @@ try:
         try:
             MQTT_CLIENT.check_msg()
         except OSError as os_e:
-            # sometimes an empty socket read happens
+            # sometimes an 'empty socket read' error happens
             # and that needlessly kills the script
             pass
         if LOOP_COUNTER % 3000 == 0:  # every 60 seconds
-            WOLK_DEVICE.send_ping()
+            WOLK_DEVICE.publish_actuator_status("SW")
             LOOP_COUNTER = 0
-        sleep_ms(20)
+        sleep_ms(SLEEP_INTERVAL_MS)
 except Exception as e:
     WOLK_DEVICE.disconnect()
     print_exception(e)

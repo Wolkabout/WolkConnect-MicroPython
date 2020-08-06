@@ -1,4 +1,4 @@
-```sh
+```console
 
 ██╗    ██╗ ██████╗ ██╗     ██╗  ██╗ ██████╗ ██████╗ ███╗   ██╗███╗   ██╗███████╗ ██████╗████████╗
 ██║    ██║██╔═══██╗██║     ██║ ██╔╝██╔════╝██╔═══██╗████╗  ██║████╗  ██║██╔════╝██╔════╝╚══██╔══╝
@@ -19,7 +19,7 @@
 MicroPython library which provides easy connectivity to [WolkAbout IoT Platform](https://demo.wolkabout.com/#/login).
 
 Supported device communication protocol(s):
-- JsonSingleReferenceProtocol
+- WolkAbout Protocol
 
 ## Requirements
 
@@ -27,14 +27,18 @@ WolkConnect-MicroPython depends on an implementation of an MQTT client. This dep
 
 ## Installation
 
-Clone this repository and then copy ``wolk.py`` into the *lib* directory of your board.
+ - Clone this repository:
+```console
+git clone https://github.com/Wolkabout/WolkConnect-MicroPython.git
+```
+ - Copy ``wolk.py`` into the *lib* directory of your board.
 
 ## Example Usage
 
 ### Establishing connection with WolkAbout IoT Platform
 
-Create a device on WolkAbout IoT platform by importing [Simple-example-deviceTemplate.json](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/Simple-example-deviceTemplate.json).<br />
-This manifest fits [main.py](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/main.py) and demonstrates the sending of a temperature sensor reading.
+Create a device on WolkAbout IoT platform by using the provided `Simple example` device type.  
+This device type fits [main.py](https://github.com/Wolkabout/WolkConnect-MicroPython/blob/master/examples/simple/main.py) and demonstrates the sending of a temperature sensor reading.
 
 ```python
 from [mqtt] import MQTTClient
@@ -78,10 +82,4 @@ WOLK_DEVICE.publish()
 ### Disconnecting from the platform
 ```python
 WOLK_DEVICE.disconnect()
-```
-
-### Keep alive
-When you want your device to stay connected and you are not sending anything to the platform, a keep alive message should be sent periodically, say every 5 minutes, with:
-```python
-WOLK_DEVICE.send_ping()
 ```

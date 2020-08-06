@@ -1,12 +1,27 @@
+"""Library for communicating with WolkAbout IoT Platform."""
+#   Copyright 2020 WolkAbout Technology s.r.o.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 import json
+from sys import print_exception
 
 
-ACTUATOR_STATE_READY = 0
-ACTUATOR_STATE_BUSY = 1
-ACTUATOR_STATE_ERROR = 2
+ACTUATOR_STATE_READY = "READY"
+ACTUATOR_STATE_BUSY = "BUSY"
+ACTUATOR_STATE_ERROR = "ERROR"
 
-DEVICE_KEY = None
-DEVICE_PASSWORD = None
+DEVICE_KEY = "device_key"
+DEVICE_PASSWORD = "some_password"
 ACTUATOR_REFERENCES = []
 HOST = "api-demo.wolkabout.com"
 PORT = 1883
@@ -86,105 +101,72 @@ def handle_configuration(configuration):
 def _make_from_sensor_reading(reference, value, timestamp):
     global DEVICE_KEY
     if isinstance(value, tuple):
-        value = ",".join(value)
-    if value is True:
-        value = "true"
-    elif value is False:
-        value = "false"
-    if "\n" in str(value):
-        value = value.replace("\n", "\\n")
-    if '"' in str(value):
-        value = str(value.replace('"', '\\"'))
-        value = str(value.replace('\\\\"', '\\"'))
+        value = ",".join(map(str, value))
+    elif isinstance(value, bool):
+        value = str(value).lower()
 
-    if timestamp is None:
-        return (
-            "readings/" + DEVICE_KEY + "/" + reference,
-            '{"data":"' + str(value) + '"}',
-        )
+    topic = "d2p/sensor_reading/d/" + DEVICE_KEY + "/r/" + str(reference)
+    payload = {"data": str(value)}
+    if timestamp is not None:
+        payload["utc"] = int(timestamp)
 
-    return (
-        "readings/" + DEVICE_KEY + "/" + reference,
-        '{"data":"' + str(value) + '","utc": ' + str(timestamp) + "}",
-    )
+    return (topic, json.dumps(payload))
 
 
 def _make_from_alarm(reference, active, timestamp):
     global DEVICE_KEY
-    if active is True:
-        active = "ON"
-    else:
-        active = "OFF"
-    if timestamp is None:
-        return ("events/" + DEVICE_KEY + "/" + reference, '{"data":"' + active + '"}')
+    topic = "d2p/events/d/" + DEVICE_KEY + "/r/" + str(reference)
 
-    return (
-        "events/" + DEVICE_KEY + "/" + reference,
-        '{"data":"' + active + '","utc":' + str(timestamp) + "}",
-    )
+    if isinstance(active, bool):
+        active = str(active).lower()
+
+    payload = {"data": active}
+    if timestamp is not None:
+        payload["utc"] = int(timestamp)
+
+    return (topic, json.dumps(payload))
 
 
 def _make_from_actuator_status(reference, value, state):
     global DEVICE_KEY
-    if state == ACTUATOR_STATE_READY:
-        state = "READY"
-    elif state == ACTUATOR_STATE_BUSY:
-        state = "BUSY"
-    else:
-        state = "ERROR"
-    if value is True:
-        value = "true"
-    elif value is False:
-        value = "false"
-    if "\n" in str(value):
-        value = str(value.replace("\n", "\\n"))
-    if '"' in str(value):
-        value = str(value.replace('"', '\\"'))
-        value = str(value.replace('\\\\"', '\\"'))
 
-    return (
-        "actuators/status/" + DEVICE_KEY + "/" + reference,
-        '{"status":"' + state + '","value":"' + str(value) + '"}',
-    )
+    topic = "d2p/actuator_status/d/" + DEVICE_KEY + "/r/" + reference
 
+    if state not in [ACTUATOR_STATE_READY, ACTUATOR_STATE_BUSY]:
+        state = ACTUATOR_STATE_ERROR
 
-def _make_from_keep_alive_message():
-    global DEVICE_KEY
-    return ("ping/" + DEVICE_KEY, "ping")
+    if isinstance(value, bool):
+        value = str(value).lower()
+
+    payload = {"status": state}
+    if state != ACTUATOR_STATE_ERROR:
+        payload["value"] = str(value)
+    return (topic, json.dumps(payload))
 
 
 def _make_from_configuration(configuration):
-    global DEVICE_KEY
-    values = str()
+    topic = "d2p/configuration_get/d/" + DEVICE_KEY
+    values = {}
 
     for reference, value in configuration.items():
-        if isinstance(value, tuple):
-            for single_value in value:
-                if single_value is True:
-                    single_value = "true"
-                elif single_value is False:
-                    single_value = "false"
-                if "\n" in str(single_value):
-                    single_value = str(single_value.replace("\n", "\\n"))
-                if '"' in str(single_value):
-                    single_value = str(single_value.replace('"', '\\"'))
-                    single_value = str(single_value.replace('\\\\"', '\\"'))
-            value = ",".join(value)
+        if isinstance(value, bool):
+            value = str(value).lower()
 
-        if value is True:
-            value = "true"
-        elif value is False:
-            value = "false"
+        values[reference] = str(value)
+    payload = {"values": values}
 
-        if "\n" in str(value):
-            value = str(value.replace("\n", "\\n"))
-        if '"' in str(value):
-            value = str(value.replace('"', '\\"'))
-            value = str(value.replace('\\\\"', '\\"'))
+    return (topic, json.dumps(payload))
 
-        values += '"' + reference + '":"' + str(value) + '",'
-    values = values[:-1]
-    return ("configurations/current/" + DEVICE_KEY, '{"values":{' + values + "}}")
+
+def _make_keep_alive():
+    topic = "ping/" + DEVICE_KEY
+    return (topic, None)
+
+
+def _deserialize_keep_alive_response(topic, message):
+    payload = json.loads(message)
+    value = payload.get("value")
+    return value
 
 
 def _deserialize_actuator_command(topic, message):
@@ -203,30 +185,26 @@ def _deserialize_actuator_command(topic, message):
 
 
 def _deserialize_configuration_command(message):
-    payload = json.loads(message)
+    configuration = json.loads(message)
 
-    configuration = payload.get("values")
     for reference, value in configuration.items():
         if value == "true":
-            value = True
-        elif value == "false":
-            value = False
+            configuration[reference] = True
+            continue
+        if value == "false":
+            configuration[reference] = False
+            continue
 
-        if isinstance(value, bool):
-            pass
-        else:
-            if "," in value:
-                values_list = value.split(",")
+        if "." in value:
+            try:
+                configuration[reference] = float(value)
+            except ValueError:
                 try:
-                    if any("." in value for value in values_list):
-                        values_list = [float(value) for value in values_list]
-                    else:
-                        values_list = [int(value) for value in values_list]
+                    configuration[reference] = int(value)
                 except ValueError:
                     pass
 
-                configuration[reference] = tuple(values_list)
-        return configuration
+    return configuration
 
 
 class WolkConnect:
@@ -245,6 +223,7 @@ class WolkConnect:
         self.actuator_status_provider = actuator_status_provider
         self.configuration_handler = configuration_handler
         self.configuration_provider = configuration_provider
+        self.platform_timestamp = None
 
         self.storage_size = storage_size
         self.outbound_message_list = []
@@ -274,28 +253,37 @@ class WolkConnect:
                 self.publish_configuration()
             return
 
+        if "pong" in topic:
+            self.platform_timestamp = _deserialize_keep_alive_response(message)
+            return
+
         print("Unhandled message received!")
         print("topic: :" + str(topic))
         print("message: :" + str(message))
 
-
     def connect(self):
         try:
-            global DEVICE_KEY
-            global ACTUATOR_REFERENCES
-            self.mqtt_client.set_last_will("lastwill/" + DEVICE_KEY, "Gone offline")
+            self.mqtt_client.set_last_will(
+                "lastwill/" + DEVICE_KEY, "Gone offline"
+            )
             self.mqtt_client.connect()
             if ACTUATOR_REFERENCES:
-                topic_root = "actuators/commands/" + DEVICE_KEY + "/"
+                topic_get = "p2d/actuator_get/d/" + DEVICE_KEY + "/r/"
+                topic_set = "p2d/actuator_set/d/" + DEVICE_KEY + "/r/"
                 for reference in ACTUATOR_REFERENCES:
-                    self.mqtt_client.subscribe(topic_root + reference)
+                    self.mqtt_client.subscribe(topic_get + reference)
+                    self.mqtt_client.subscribe(topic_set + reference)
             if self.configuration_handler and self.configuration_provider:
-                self.mqtt_client.subscribe("configurations/commands/" + DEVICE_KEY)
+                self.mqtt_client.subscribe(
+                    "p2d/configuration_get/d/" + DEVICE_KEY
+                )
+                self.mqtt_client.subscribe(
+                    "p2d/configuration_set/d/" + DEVICE_KEY
+                )
         except Exception as e:
-            raise e
+            print_exception(e)
 
     def disconnect(self):
-        global DEVICE_KEY
         self.mqtt_client.publish("lastwill/" + DEVICE_KEY, "Gone offline")
         self.mqtt_client.disconnect()
 
@@ -328,7 +316,11 @@ class WolkConnect:
             raise RuntimeError("No configuration handler/provider!")
         configuration = self.configuration_provider()
         topic, message = _make_from_configuration(configuration)
-
-    def send_ping(self):
-        topic, message = _make_from_keep_alive_message()
         self.mqtt_client.publish(topic, message)
+
+    def send_keep_alive(self):
+        topic, payload = _make_keep_alive()
+        self.mqtt_client.publish(topic, payload)
+
+    def request_timestamp(self):
+        return self.platform_timestamp
