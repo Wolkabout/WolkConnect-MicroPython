@@ -24,7 +24,7 @@ DEVICE_KEY = "device_key"
 DEVICE_PASSWORD = "some_password"
 ACTUATOR_REFERENCES = []
 HOST = "api-demo.wolkabout.com"
-PORT = 1883
+PORT = 2883
 
 
 def handle_actuation(reference, value):
