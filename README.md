@@ -16,6 +16,11 @@
                                                                                                  
 
 ```
+# IMPORTANT
+**Compatible up to WolkAbout Platform 21.GA version.**
+
+---
+
 MicroPython library which provides easy connectivity to [WolkAbout IoT Platform](https://demo.wolkabout.com/#/login).
 
 Supported device communication protocol(s):
